@@ -14,7 +14,186 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analysis_results: {
+        Row: {
+          company_profile_id: string
+          competitor_data: Json | null
+          created_at: string
+          generated_html: string | null
+          id: string
+          queries: Json | null
+        }
+        Insert: {
+          company_profile_id: string
+          competitor_data?: Json | null
+          created_at?: string
+          generated_html?: string | null
+          id?: string
+          queries?: Json | null
+        }
+        Update: {
+          company_profile_id?: string
+          competitor_data?: Json | null
+          created_at?: string
+          generated_html?: string | null
+          id?: string
+          queries?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_results_company_profile_id_fkey"
+            columns: ["company_profile_id"]
+            isOneToOne: false
+            referencedRelation: "company_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
+      media_sources: {
+        Row: {
+          company_profile_id: string
+          created_at: string
+          description: string | null
+          embedding_data: Json | null
+          embedding_status: string
+          file_name: string | null
+          file_url: string | null
+          id: string
+          source_type: string
+        }
+        Insert: {
+          company_profile_id: string
+          created_at?: string
+          description?: string | null
+          embedding_data?: Json | null
+          embedding_status?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          source_type: string
+        }
+        Update: {
+          company_profile_id?: string
+          created_at?: string
+          description?: string | null
+          embedding_data?: Json | null
+          embedding_status?: string
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_sources_company_profile_id_fkey"
+            columns: ["company_profile_id"]
+            isOneToOne: false
+            referencedRelation: "company_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      playlist_sources: {
+        Row: {
+          company_profile_id: string
+          created_at: string
+          id: string
+          import_status: string
+          imported_data: Json | null
+          platform: string
+          playlist_name: string | null
+          playlist_url: string
+        }
+        Insert: {
+          company_profile_id: string
+          created_at?: string
+          id?: string
+          import_status?: string
+          imported_data?: Json | null
+          platform: string
+          playlist_name?: string | null
+          playlist_url: string
+        }
+        Update: {
+          company_profile_id?: string
+          created_at?: string
+          id?: string
+          import_status?: string
+          imported_data?: Json | null
+          platform?: string
+          playlist_name?: string | null
+          playlist_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playlist_sources_company_profile_id_fkey"
+            columns: ["company_profile_id"]
+            isOneToOne: false
+            referencedRelation: "company_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
