@@ -71,6 +71,13 @@ export default function Index() {
       if (!scrapeResult.success || !scrapeResult.data) {
         throw new Error(scrapeResult.error || "Failed to scrape website");
       }
+
+      // Check if content was actually scraped
+      const scrapedContent = scrapeResult.data.content?.trim() || "";
+      if (!scrapedContent) {
+        // Use URL-based fallback content for analysis
+        console.warn("No content scraped, using URL-based analysis");
+      }
       
       setPipelineState((s) => ({ ...s, scraping: "completed", embedding: "processing" }));
 
@@ -78,8 +85,9 @@ export default function Index() {
       await new Promise((resolve) => setTimeout(resolve, 500));
       setPipelineState((s) => ({ ...s, embedding: "completed", queryGeneration: "processing" }));
 
-      // Step 3: Query Generation
-      const analysisResult = await seoApi.analyzeContent(scrapeResult.data.content, url);
+      // Step 3: Query Generation - use URL if no content available
+      const contentToAnalyze = scrapedContent || `Website: ${url} - Analyze based on URL structure and domain.`;
+      const analysisResult = await seoApi.analyzeContent(contentToAnalyze, url);
       
       if (!analysisResult.success || !analysisResult.data) {
         throw new Error(analysisResult.error || "Failed to analyze content");
@@ -92,7 +100,7 @@ export default function Index() {
         queries,
         competitors: [],
         queryContents: [],
-        scrapedContent: scrapeResult.data.content,
+        scrapedContent: scrapedContent || contentToAnalyze,
       });
       setPipelineState((s) => ({ ...s, queryGeneration: "completed", competitorAnalysis: "processing" }));
 
