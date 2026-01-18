@@ -1,1 +1,13 @@
 project_id = "vnqzdyicrtnckjkmryxy"
+
+[functions.seo-scrape]
+verify_jwt = false
+
+[functions.seo-analyze]
+verify_jwt = false
+
+[functions.seo-search]
+verify_jwt = false
+
+[functions.seo-generate]
+verify_jwt = false

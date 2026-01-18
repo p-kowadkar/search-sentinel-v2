@@ -1,0 +1,125 @@
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { companyDescription, targetAudience, queries, competitorAnalysis, url } = await req.json();
+
+    if (!companyDescription || !queries || !competitorAnalysis) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Missing required data' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!apiKey) {
+      console.error('LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'AI not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Generating SEO content for:', url);
+
+    const systemPrompt = `You are an expert SEO content writer. Your task is to create high-quality HTML content that will help a website rank for specific search queries.
+
+Create content that:
+1. Naturally incorporates target keywords
+2. Provides genuine value to readers
+3. Follows SEO best practices (proper headings, meta descriptions, semantic HTML)
+4. Addresses the content gaps identified in competitor analysis
+5. Is well-structured with clear sections
+
+Output valid HTML that can be directly inserted into a CMS or webpage.`;
+
+    const userPrompt = `Create SEO-optimized HTML content for this company:
+
+Company: ${companyDescription}
+Target Audience: ${targetAudience}
+Website: ${url}
+
+Target Search Queries:
+${queries.slice(0, 5).map((q: string, i: number) => `${i + 1}. ${q}`).join('\n')}
+
+Competitor Analysis:
+${JSON.stringify(competitorAnalysis.slice(0, 3), null, 2)}
+
+Create a comprehensive HTML article (1500-2000 words) that:
+1. Targets the primary search queries
+2. Fills the content gaps identified in competitor analysis
+3. Provides unique value and insights
+4. Includes proper SEO elements (title, meta description, headings, internal link suggestions)
+5. Has clear calls-to-action
+
+Return only valid HTML starting with <!DOCTYPE html>.`;
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add more credits.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const errorText = await response.text();
+      console.error('AI error:', response.status, errorText);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Content generation failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const aiResponse = await response.json();
+    let html = aiResponse.choices?.[0]?.message?.content || '';
+
+    // Clean up the HTML if it's wrapped in code blocks
+    html = html.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+
+    console.log('Generated HTML content length:', html.length);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        data: {
+          html,
+        },
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in seo-generate:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ success: false, error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
