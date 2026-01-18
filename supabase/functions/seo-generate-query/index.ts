@@ -19,6 +19,12 @@ function getUserIdFromRequest(req: Request): string | null {
   }
 }
 
+export interface ContentAnalysis {
+  currentContentPros: string[];
+  currentContentCons: string[];
+  generatedContentImprovements: string[];
+}
+
 export interface QueryContentResult {
   query: string;
   guideline: {
@@ -30,6 +36,7 @@ export interface QueryContentResult {
     targetWordCount: number;
     primaryKeywords: string[];
     secondaryKeywords: string[];
+    contentAnalysis: ContentAnalysis;
   };
   content: {
     html: string;
@@ -107,6 +114,9 @@ Create a content guideline that identifies:
 2. Strengths of top competitors that we need to match or exceed
 3. Unique angles the company can take to differentiate
 4. Specific recommendations for content structure and depth
+5. PROS of the current content - what it does well
+6. CONS of the current content - what needs improvement
+7. How the generated content will address these cons
 
 Return a JSON object with this exact structure:
 {
@@ -117,7 +127,12 @@ Return a JSON object with this exact structure:
   "keyDifferentiators": ["Unique angles to pursue", "..."],
   "targetWordCount": 1500,
   "primaryKeywords": ["main keywords to target"],
-  "secondaryKeywords": ["supporting keywords"]
+  "secondaryKeywords": ["supporting keywords"],
+  "contentAnalysis": {
+    "currentContentPros": ["What the current content does well", "..."],
+    "currentContentCons": ["What needs improvement in current content", "..."],
+    "generatedContentImprovements": ["How new content addresses each con", "..."]
+  }
 }
 
 Return ONLY valid JSON, no markdown.`;
@@ -154,6 +169,14 @@ Return ONLY valid JSON, no markdown.`;
     let guideline;
     try {
       guideline = JSON.parse(guidelineText);
+      // Ensure contentAnalysis exists
+      if (!guideline.contentAnalysis) {
+        guideline.contentAnalysis = {
+          currentContentPros: ['Existing brand voice and messaging'],
+          currentContentCons: ['Missing depth on key topics'],
+          generatedContentImprovements: ['Comprehensive coverage of missing topics'],
+        };
+      }
     } catch (e) {
       console.error('Failed to parse guideline JSON:', e);
       guideline = {
@@ -165,6 +188,11 @@ Return ONLY valid JSON, no markdown.`;
         targetWordCount: 1500,
         primaryKeywords: [query],
         secondaryKeywords: [],
+        contentAnalysis: {
+          currentContentPros: ['Existing brand voice and messaging', 'Established domain authority'],
+          currentContentCons: ['Limited depth on key topics', 'Missing competitor-covered angles'],
+          generatedContentImprovements: ['Comprehensive topic coverage', 'Competitive keyword optimization'],
+        },
       };
     }
 
