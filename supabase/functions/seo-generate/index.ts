@@ -18,9 +18,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    const apiKey = Deno.env.get('LLAMA_API_KEY');
     if (!apiKey) {
-      console.error('LOVABLE_API_KEY not configured');
+      console.error('LLAMA_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -61,18 +61,22 @@ Create a comprehensive HTML article (1500-2000 words) that:
 
 Return only valid HTML starting with <!DOCTYPE html>.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.llama.com/compat/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'Llama-4-Maverick-17B-128E-Instruct-FP8',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        temperature: 0.6,
+        max_completion_tokens: 4096,
+        top_p: 0.9,
+        frequency_penalty: 1,
       }),
     });
 
@@ -83,14 +87,8 @@ Return only valid HTML starting with <!DOCTYPE html>.`;
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add more credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
       const errorText = await response.text();
-      console.error('AI error:', response.status, errorText);
+      console.error('Llama API error:', response.status, errorText);
       return new Response(
         JSON.stringify({ success: false, error: 'Content generation failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

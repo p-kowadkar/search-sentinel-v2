@@ -18,9 +18,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
+    const apiKey = Deno.env.get('LLAMA_API_KEY');
     if (!apiKey) {
-      console.error('LOVABLE_API_KEY not configured');
+      console.error('LLAMA_API_KEY not configured');
       return new Response(
         JSON.stringify({ success: false, error: 'AI not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 2. Generate 10-15 strategic search queries that potential customers might use to find solutions like this company offers
 3. Focus on high-intent, commercial queries that indicate buying intent
 
-Analyze the provided website content and return a JSON response with:
+You MUST respond with a valid JSON object containing:
 - companyDescription: A brief 2-3 sentence description of what the company does
 - targetAudience: Who their ideal customers are
 - queries: An array of 10-15 search queries
@@ -42,57 +42,35 @@ Analyze the provided website content and return a JSON response with:
 The queries should be:
 - Specific enough to be actionable
 - Include a mix of informational and transactional intent
-- Cover different stages of the buyer journey`;
+- Cover different stages of the buyer journey
+
+IMPORTANT: Return ONLY valid JSON, no markdown or other text.`;
 
     const userPrompt = `Analyze this website content and generate SEO queries:
 
 Website URL: ${url}
 
 Content:
-${content.substring(0, 15000)}`;
+${content.substring(0, 15000)}
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+Respond with a JSON object containing companyDescription, targetAudience, and queries array.`;
+
+    const response = await fetch('https://api.llama.com/compat/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'Llama-4-Maverick-17B-128E-Instruct-FP8',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'seo_analysis',
-              description: 'Return the SEO analysis results',
-              parameters: {
-                type: 'object',
-                properties: {
-                  companyDescription: {
-                    type: 'string',
-                    description: 'A brief description of what the company does',
-                  },
-                  targetAudience: {
-                    type: 'string',
-                    description: 'Who the ideal customers are',
-                  },
-                  queries: {
-                    type: 'array',
-                    items: { type: 'string' },
-                    description: 'Array of 10-15 search queries',
-                  },
-                },
-                required: ['companyDescription', 'targetAudience', 'queries'],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: 'function', function: { name: 'seo_analysis' } },
+        temperature: 0.6,
+        max_completion_tokens: 2048,
+        top_p: 0.9,
+        frequency_penalty: 1,
       }),
     });
 
@@ -103,14 +81,8 @@ ${content.substring(0, 15000)}`;
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ success: false, error: 'AI credits exhausted. Please add more credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
       const errorText = await response.text();
-      console.error('AI error:', response.status, errorText);
+      console.error('Llama API error:', response.status, errorText);
       return new Response(
         JSON.stringify({ success: false, error: 'AI analysis failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -118,17 +90,31 @@ ${content.substring(0, 15000)}`;
     }
 
     const aiResponse = await response.json();
-    const toolCall = aiResponse.choices?.[0]?.message?.tool_calls?.[0];
+    const messageContent = aiResponse.choices?.[0]?.message?.content;
     
-    if (!toolCall) {
-      console.error('No tool call in response');
+    if (!messageContent) {
+      console.error('No content in response');
       return new Response(
         JSON.stringify({ success: false, error: 'Invalid AI response' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const analysis = JSON.parse(toolCall.function.arguments);
+    // Parse the JSON response, handling potential markdown code blocks
+    let analysis;
+    try {
+      let jsonStr = messageContent.trim();
+      // Remove markdown code blocks if present
+      jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      analysis = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', messageContent);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Failed to parse AI response' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     console.log(`Generated ${analysis.queries?.length || 0} queries`);
 
     return new Response(
