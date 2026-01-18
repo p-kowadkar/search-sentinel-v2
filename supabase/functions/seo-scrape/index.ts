@@ -1,7 +1,24 @@
+import { checkApiRateLimit, recordUsageEvent } from '@shared/flowglad.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Extract user ID from authorization header
+function getUserIdFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) return null;
+  
+  try {
+    // Parse JWT to get user ID (simplified - in production use proper JWT validation)
+    const token = authHeader.replace('Bearer ', '');
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,6 +33,30 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'URL is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check rate limit
+    const userId = getUserIdFromRequest(req);
+    if (userId) {
+      const { allowed, remaining, error } = await checkApiRateLimit(userId, 'scrape-requests');
+      
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: error?.message || 'Rate limit exceeded. Please upgrade your plan.',
+            remaining: 0
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              ...corsHeaders, 
+              'Content-Type': 'application/json',
+              'X-RateLimit-Remaining': '0'
+            } 
+          }
+        );
+      }
     }
 
     const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
@@ -93,6 +134,11 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Scraped ${scrapedContent.length} pages`);
+
+    // Record usage after successful operation
+    if (userId) {
+      await recordUsageEvent(userId, 'scrape-requests', 1);
+    }
 
     return new Response(
       JSON.stringify({

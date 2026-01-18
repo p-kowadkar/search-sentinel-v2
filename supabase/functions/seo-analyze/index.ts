@@ -1,7 +1,23 @@
+import { checkApiRateLimit, recordUsageEvent } from '@shared/flowglad.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Extract user ID from authorization header
+function getUserIdFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) return null;
+  
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,6 +32,22 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'Content is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check rate limit
+    const userId = getUserIdFromRequest(req);
+    if (userId) {
+      const { allowed, error } = await checkApiRateLimit(userId, 'analyze-requests');
+      
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: error?.message || 'Rate limit exceeded. Please upgrade your plan.',
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const apiKey = Deno.env.get('LLAMA_API_KEY');
@@ -77,7 +109,7 @@ Respond with a JSON object containing companyDescription, targetAudience, and qu
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ success: false, error: 'AI rate limit exceeded. Please try again later.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -104,7 +136,6 @@ Respond with a JSON object containing companyDescription, targetAudience, and qu
     let analysis;
     try {
       let jsonStr = messageContent.trim();
-      // Remove markdown code blocks if present
       jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       analysis = JSON.parse(jsonStr);
     } catch (parseError) {
@@ -116,6 +147,11 @@ Respond with a JSON object containing companyDescription, targetAudience, and qu
     }
 
     console.log(`Generated ${analysis.queries?.length || 0} queries`);
+
+    // Record usage after successful operation
+    if (userId) {
+      await recordUsageEvent(userId, 'analyze-requests', 1);
+    }
 
     return new Response(
       JSON.stringify({

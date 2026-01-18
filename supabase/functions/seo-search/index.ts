@@ -1,7 +1,23 @@
+import { checkApiRateLimit, recordUsageEvent } from '@shared/flowglad.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Extract user ID from authorization header
+function getUserIdFromRequest(req: Request): string | null {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) return null;
+  
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -16,6 +32,22 @@ Deno.serve(async (req) => {
         JSON.stringify({ success: false, error: 'Query is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check rate limit
+    const userId = getUserIdFromRequest(req);
+    if (userId) {
+      const { allowed, error } = await checkApiRateLimit(userId, 'search-requests');
+      
+      if (!allowed) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: error?.message || 'Rate limit exceeded. Please upgrade your plan.',
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const apiKey = Deno.env.get('PERPLEXITY_API_KEY');
@@ -97,6 +129,11 @@ Be specific about URLs and content strategies.`,
       }
     }
 
+    // Record usage after successful operation
+    if (userId) {
+      await recordUsageEvent(userId, 'search-requests', 1);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -119,7 +156,6 @@ Be specific about URLs and content strategies.`,
 });
 
 function extractInsights(content: string, index: number): string[] {
-  // Extract relevant insights from the AI response
   const defaultInsights = [
     'Comprehensive content coverage',
     'Strong keyword optimization',
@@ -127,7 +163,6 @@ function extractInsights(content: string, index: number): string[] {
     'Good user experience signals',
   ];
 
-  // Try to find specific mentions in the content
   const insights: string[] = [];
   
   const patterns = [
