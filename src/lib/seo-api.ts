@@ -30,6 +30,12 @@ export interface GenerateResult {
   html: string;
 }
 
+export interface ContentAnalysis {
+  currentContentPros: string[];
+  currentContentCons: string[];
+  generatedContentImprovements: string[];
+}
+
 export interface ContentGuideline {
   title: string;
   currentGaps: string[];
@@ -39,6 +45,7 @@ export interface ContentGuideline {
   targetWordCount: number;
   primaryKeywords: string[];
   secondaryKeywords: string[];
+  contentAnalysis: ContentAnalysis;
 }
 
 export interface QueryContent {
@@ -52,6 +59,25 @@ export interface QueryContentResult {
   query: string;
   guideline: ContentGuideline;
   content: QueryContent;
+}
+
+// LLM Benchmark Types
+export type LLMProvider = 'openai' | 'google' | 'xai' | 'perplexity';
+
+export interface LLMBenchmarkResult {
+  provider: LLMProvider;
+  providerName: string;
+  available: boolean;
+  response?: string;
+  relevanceScore?: number;
+  keyTopics?: string[];
+  error?: string;
+}
+
+export interface LLMComparisonResult {
+  query: string;
+  results: LLMBenchmarkResult[];
+  correlationAnalysis?: string;
 }
 
 async function invokeFunction<T>(

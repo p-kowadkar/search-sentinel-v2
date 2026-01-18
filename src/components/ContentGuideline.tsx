@@ -1,4 +1,4 @@
-import { Target, TrendingUp, Lightbulb, AlertCircle, Tag } from "lucide-react";
+import { Target, TrendingUp, Lightbulb, AlertCircle, Tag, ThumbsUp, ThumbsDown, Sparkles } from "lucide-react";
 import { ContentGuideline as GuidelineType } from "@/lib/seo-api";
 
 interface ContentGuidelineProps {
@@ -19,6 +19,65 @@ export function ContentGuidelineCard({ guideline }: ContentGuidelineProps) {
           </p>
         </div>
       </div>
+
+      {/* Pros & Cons Analysis */}
+      {guideline.contentAnalysis && (
+        <div className="bg-gradient-to-r from-emerald-500/5 to-rose-500/5 rounded-lg p-4 border border-border">
+          <h5 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Current vs Generated Content Analysis
+          </h5>
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Current Content Pros */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-500">
+                <ThumbsUp className="w-4 h-4" />
+                Current Content Pros
+              </div>
+              <ul className="space-y-1">
+                {guideline.contentAnalysis.currentContentPros.map((pro, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-emerald-500/60 mt-1">+</span>
+                    {pro}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Current Content Cons */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-rose-500">
+                <ThumbsDown className="w-4 h-4" />
+                Current Content Cons
+              </div>
+              <ul className="space-y-1">
+                {guideline.contentAnalysis.currentContentCons.map((con, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-rose-500/60 mt-1">−</span>
+                    {con}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Generated Content Improvements */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Sparkles className="w-4 h-4" />
+                Generated Improvements
+              </div>
+              <ul className="space-y-1">
+                {guideline.contentAnalysis.generatedContentImprovements.map((improvement, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <span className="text-primary/60 mt-1">✓</span>
+                    {improvement}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Current Gaps */}
