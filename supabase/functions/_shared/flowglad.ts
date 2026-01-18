@@ -2,6 +2,9 @@
 
 const FLOWGLAD_API_URL = 'https://api.flowglad.com';
 
+// Demo user ID that bypasses rate limiting
+export const DEMO_USER_ID = 'demo-user-12345';
+
 interface UsageBalance {
   availableBalance: number;
   usedBalance: number;
@@ -18,6 +21,11 @@ interface FlowgladBilling {
 interface FlowgladError {
   code: string;
   message: string;
+}
+
+// Check if this is a demo user (bypasses rate limiting)
+export function isDemoUser(userId: string): boolean {
+  return userId === DEMO_USER_ID;
 }
 
 export async function getFlowgladBilling(customerExternalId: string): Promise<{ billing: FlowgladBilling | null; error: FlowgladError | null }> {
@@ -134,24 +142,28 @@ export async function recordUsageEvent(
 export async function checkApiRateLimit(
   customerExternalId: string,
   usageMeterSlug: string = 'api-requests'
-): Promise<{ allowed: boolean; remaining: number; error: FlowgladError | null }> {
+): Promise<{ allowed: boolean; remaining: number; error: FlowgladError | null; isDemo: boolean }> {
+  // Demo users bypass rate limiting with a limited quota
+  if (isDemoUser(customerExternalId)) {
+    console.log('Demo user detected, allowing with demo quota');
+    return { allowed: true, remaining: 3, error: null, isDemo: true };
+  }
+
   const { billing, error } = await getFlowgladBilling(customerExternalId);
   
   if (error) {
-    // If billing check fails, allow the request but log the error
     console.error('Rate limit check failed:', error);
-    return { allowed: true, remaining: -1, error };
+    return { allowed: true, remaining: -1, error, isDemo: false };
   }
 
   if (!billing) {
-    return { allowed: true, remaining: -1, error: null };
+    return { allowed: true, remaining: -1, error: null, isDemo: false };
   }
 
   const usage = billing.checkUsageBalance(usageMeterSlug);
   
   if (!usage) {
-    // No usage meter configured, allow the request
-    return { allowed: true, remaining: -1, error: null };
+    return { allowed: true, remaining: -1, error: null, isDemo: false };
   }
 
   const allowed = usage.availableBalance > 0;
@@ -159,6 +171,7 @@ export async function checkApiRateLimit(
   return { 
     allowed, 
     remaining: usage.availableBalance,
-    error: allowed ? null : { code: 'RATE_LIMIT_EXCEEDED', message: 'API rate limit exceeded. Please upgrade your plan.' }
+    error: allowed ? null : { code: 'RATE_LIMIT_EXCEEDED', message: 'API rate limit exceeded. Please upgrade your plan.' },
+    isDemo: false
   };
 }
