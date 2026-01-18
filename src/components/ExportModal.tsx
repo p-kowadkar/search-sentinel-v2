@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Globe, Loader2, ExternalLink } from "lucide-react";
+import { Copy, Check, Globe, Loader2, ExternalLink, Megaphone, Twitter, Linkedin, MessageSquare, Facebook } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useSocialAccounts } from "./SocialAccountsModal";
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -21,8 +24,16 @@ interface ExportModalProps {
   title: string;
 }
 
+const SOCIAL_PLATFORMS = [
+  { id: 'twitter', name: 'X (Twitter)', icon: Twitter, color: 'text-foreground' },
+  { id: 'linkedin', name: 'LinkedIn', icon: Linkedin, color: 'text-blue-600' },
+  { id: 'reddit', name: 'Reddit', icon: MessageSquare, color: 'text-orange-500' },
+  { id: 'facebook', name: 'Facebook', icon: Facebook, color: 'text-blue-500' },
+];
+
 export function ExportModal({ isOpen, onClose, htmlContent, title }: ExportModalProps) {
   const { toast } = useToast();
+  const { accounts } = useSocialAccounts();
   const [copied, setCopied] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   
@@ -35,6 +46,11 @@ export function ExportModal({ isOpen, onClose, htmlContent, title }: ExportModal
   const [ssApiKey, setSsApiKey] = useState("");
   const [ssSiteId, setSsSiteId] = useState("");
   const [ssCollectionId, setSsCollectionId] = useState("");
+
+  // Content Blast state
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [blastMessage, setBlastMessage] = useState("");
+  const [isBlasting, setIsBlasting] = useState(false);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(htmlContent);
@@ -136,24 +152,76 @@ export function ExportModal({ isOpen, onClose, htmlContent, title }: ExportModal
     }
   };
 
+  const handleContentBlast = async () => {
+    if (selectedPlatforms.length === 0) {
+      toast({
+        title: "No platforms selected",
+        description: "Please select at least one platform to share to.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!blastMessage.trim()) {
+      toast({
+        title: "Message required",
+        description: "Please enter a message for your social posts.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBlasting(true);
+    
+    // Simulate the blast - in production this would call the social-blast edge function
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    toast({
+      title: "Content Blast Queued! 🚀",
+      description: `Your message will be posted to ${selectedPlatforms.length} platform(s). (Feature in development)`,
+    });
+    
+    setIsBlasting(false);
+  };
+
+  const togglePlatform = (platformId: string) => {
+    setSelectedPlatforms(prev => 
+      prev.includes(platformId) 
+        ? prev.filter(p => p !== platformId)
+        : [...prev, platformId]
+    );
+  };
+
+  const connectedAccounts = accounts.filter(a => a.is_connected);
+  const hasConnectedAccounts = connectedAccounts.length > 0;
+
+  // Generate default blast message from title
+  const generateDefaultMessage = () => {
+    setBlastMessage(`📢 New content just dropped!\n\n${title}\n\n#SEO #ContentMarketing`);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Globe className="w-5 h-5 text-primary" />
             Export Content
           </DialogTitle>
           <DialogDescription>
-            Copy the HTML or publish directly to your CMS.
+            Copy the HTML, publish to your CMS, or share on social media.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="copy" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="copy">Copy HTML</TabsTrigger>
-            <TabsTrigger value="wordpress">WordPress</TabsTrigger>
-            <TabsTrigger value="squarespace">Squarespace</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="copy" className="text-xs">Copy</TabsTrigger>
+            <TabsTrigger value="wordpress" className="text-xs">WordPress</TabsTrigger>
+            <TabsTrigger value="squarespace" className="text-xs">Squarespace</TabsTrigger>
+            <TabsTrigger value="blast" className="text-xs">
+              <Megaphone className="w-3 h-3 mr-1" />
+              Blast
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="copy" className="space-y-4">
@@ -281,6 +349,104 @@ export function ExportModal({ isOpen, onClose, htmlContent, title }: ExportModal
                 </>
               )}
             </Button>
+          </TabsContent>
+
+          <TabsContent value="blast" className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium mb-3 block">Select Platforms</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {SOCIAL_PLATFORMS.map((platform) => {
+                    const account = connectedAccounts.find(a => a.platform === platform.id);
+                    const isConnected = !!account;
+                    const Icon = platform.icon;
+
+                    return (
+                      <div
+                        key={platform.id}
+                        className={`flex items-center gap-2 p-3 rounded-lg border ${
+                          isConnected 
+                            ? 'border-border bg-muted/30 cursor-pointer hover:bg-muted/50' 
+                            : 'border-border/50 bg-muted/10 opacity-50'
+                        }`}
+                        onClick={() => isConnected && togglePlatform(platform.id)}
+                      >
+                        <Checkbox
+                          checked={selectedPlatforms.includes(platform.id)}
+                          disabled={!isConnected}
+                          onCheckedChange={() => isConnected && togglePlatform(platform.id)}
+                        />
+                        <Icon className={`w-4 h-4 ${platform.color}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{platform.name}</p>
+                          {isConnected ? (
+                            <p className="text-xs text-muted-foreground truncate">
+                              @{account.account_name}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Not linked</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {!hasConnectedAccounts && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Link your social accounts in Settings to enable content blasting.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="blast-message">Message</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateDefaultMessage}
+                    className="text-xs h-6"
+                  >
+                    Generate
+                  </Button>
+                </div>
+                <Textarea
+                  id="blast-message"
+                  placeholder="Write your social media post..."
+                  value={blastMessage}
+                  onChange={(e) => setBlastMessage(e.target.value)}
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {blastMessage.length}/280 characters
+                </p>
+              </div>
+
+              <Button
+                onClick={handleContentBlast}
+                className="w-full"
+                disabled={isBlasting || selectedPlatforms.length === 0}
+              >
+                {isBlasting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Blasting...
+                  </>
+                ) : (
+                  <>
+                    <Megaphone className="w-4 h-4 mr-2" />
+                    Blast to {selectedPlatforms.length || 'Selected'} Platform{selectedPlatforms.length !== 1 ? 's' : ''}
+                  </>
+                )}
+              </Button>
+
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center">
+                  🚧 <strong>Work in Progress:</strong> Full social media API integration coming soon.
+                </p>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </DialogContent>

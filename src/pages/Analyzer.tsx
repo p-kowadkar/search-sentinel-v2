@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, BarChart3, Zap, Target, BookOpen, LogOut, Sparkles } from "lucide-react";
+import { Search, FileText, BarChart3, Zap, Target, BookOpen, LogOut, Sparkles, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemo } from "@/hooks/useDemo";
@@ -12,6 +12,7 @@ import { ResultCard } from "@/components/ResultCard";
 import { QueryChip } from "@/components/QueryChip";
 import { CompetitorCard } from "@/components/CompetitorCard";
 import { QueryContentCard } from "@/components/QueryContentCard";
+import { SocialAccountsModal } from "@/components/SocialAccountsModal";
 import { seoApi, SearchResult, QueryContentResult } from "@/lib/seo-api";
 
 interface PipelineState {
@@ -48,6 +49,7 @@ export default function Analyzer() {
     contentGeneration: "pending",
   });
   const [results, setResults] = useState<AnalysisResults | null>(null);
+  const [showSocialSettings, setShowSocialSettings] = useState(false);
 
   // Redirect if not authenticated and not in demo mode
   useEffect(() => {
@@ -224,7 +226,7 @@ export default function Analyzer() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {isDemoMode && (
               <Badge variant="secondary" className="bg-accent/20 text-accent">
                 <Sparkles className="w-3 h-3 mr-1" />
@@ -232,9 +234,19 @@ export default function Analyzer() {
               </Badge>
             )}
             {user && (
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user.email}
-              </span>
+              <>
+                <span className="text-sm text-muted-foreground hidden sm:inline">
+                  {user.email}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowSocialSettings(true)}
+                  title="Social Media Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -400,6 +412,12 @@ export default function Analyzer() {
           </div>
         </div>
       </main>
+
+      {/* Social Accounts Settings Modal */}
+      <SocialAccountsModal
+        isOpen={showSocialSettings}
+        onClose={() => setShowSocialSettings(false)}
+      />
     </div>
   );
 }
