@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronUp, FileText, Code, Copy, Check, Sparkles, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, FileText, Code, Copy, Check, Sparkles, Loader2, Upload } from "lucide-react";
 import { QueryContentResult, LLMComparisonResult, seoApi } from "@/lib/seo-api";
 import { ContentGuidelineCard } from "./ContentGuideline";
 import { LLMComparisonCard } from "./LLMComparisonCard";
+import { ExportModal } from "./ExportModal";
 import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,6 +17,7 @@ export function QueryContentCard({ result, index }: QueryContentCardProps) {
   const [isExpanded, setIsExpanded] = useState(index === 0);
   const [showPreview, setShowPreview] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [llmComparison, setLlmComparison] = useState<LLMComparisonResult | null>(null);
   const [isLoadingLLM, setIsLoadingLLM] = useState(false);
   const [hasLoadedLLM, setHasLoadedLLM] = useState(false);
@@ -176,6 +178,14 @@ export function QueryContentCard({ result, index }: QueryContentCardProps) {
                     </>
                   )}
                 </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowExportModal(true)}
+                  className="text-xs"
+                >
+                  <Upload className="w-3 h-3 mr-1" /> Export
+                </Button>
               </div>
             </div>
 
@@ -198,6 +208,14 @@ export function QueryContentCard({ result, index }: QueryContentCardProps) {
           </div>
         </div>
       )}
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        htmlContent={result.content.html}
+        title={result.content.metaTitle || result.query}
+      />
     </div>
   );
 }
