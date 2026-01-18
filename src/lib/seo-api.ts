@@ -153,4 +153,11 @@ export const seoApi = {
       competitorAnalysis,
     });
   },
+
+  // Step 5: Compare query across LLMs
+  async compareLLMs(
+    query: string
+  ): Promise<{ success: boolean; data?: LLMComparisonResult; error?: string }> {
+    return invokeFunction<LLMComparisonResult>('seo-llm-compare', { query });
+  },
 };

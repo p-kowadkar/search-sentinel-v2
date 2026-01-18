@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { ChevronDown, ChevronUp, FileText, Code, Copy, Check, ExternalLink } from "lucide-react";
-import { QueryContentResult } from "@/lib/seo-api";
+import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp, FileText, Code, Copy, Check, Sparkles, Loader2 } from "lucide-react";
+import { QueryContentResult, LLMComparisonResult, seoApi } from "@/lib/seo-api";
 import { ContentGuidelineCard } from "./ContentGuideline";
+import { LLMComparisonCard } from "./LLMComparisonCard";
 import { Button } from "./ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -15,6 +16,40 @@ export function QueryContentCard({ result, index }: QueryContentCardProps) {
   const [isExpanded, setIsExpanded] = useState(index === 0);
   const [showPreview, setShowPreview] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [llmComparison, setLlmComparison] = useState<LLMComparisonResult | null>(null);
+  const [isLoadingLLM, setIsLoadingLLM] = useState(false);
+  const [hasLoadedLLM, setHasLoadedLLM] = useState(false);
+
+  // Load LLM comparison when card is expanded
+  useEffect(() => {
+    if (isExpanded && !hasLoadedLLM && !isLoadingLLM) {
+      loadLLMComparison();
+    }
+  }, [isExpanded]);
+
+  const loadLLMComparison = async () => {
+    setIsLoadingLLM(true);
+    setHasLoadedLLM(true);
+    
+    try {
+      const response = await seoApi.compareLLMs(result.query);
+      if (response.success && response.data) {
+        setLlmComparison(response.data);
+      } else {
+        console.error("LLM comparison failed:", response.error);
+        // Create a placeholder result showing error
+        setLlmComparison({
+          query: result.query,
+          results: [],
+          correlationAnalysis: response.error || "Failed to compare LLMs",
+        });
+      }
+    } catch (error) {
+      console.error("LLM comparison error:", error);
+    } finally {
+      setIsLoadingLLM(false);
+    }
+  };
 
   const handleCopy = async () => {
     try {
@@ -84,7 +119,25 @@ export function QueryContentCard({ result, index }: QueryContentCardProps) {
             <ContentGuidelineCard guideline={result.guideline} />
           </div>
 
-          {/* Content Preview/Code */}
+          {/* LLM Comparison */}
+          <div className="p-4 border-b border-border">
+            <h4 className="font-semibold text-sm text-muted-foreground mb-3 uppercase tracking-wide flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              LLM Response Comparison
+            </h4>
+            {isLoadingLLM ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Querying LLMs...</span>
+              </div>
+            ) : llmComparison ? (
+              <LLMComparisonCard comparison={llmComparison} />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                LLM comparison will load automatically
+              </div>
+            )}
+          </div>
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
