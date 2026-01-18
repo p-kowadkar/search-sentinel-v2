@@ -7,6 +7,7 @@ import { ResultCard } from "@/components/ResultCard";
 import { QueryChip } from "@/components/QueryChip";
 import { CompetitorCard } from "@/components/CompetitorCard";
 import { HtmlPreview } from "@/components/HtmlPreview";
+import { seoApi, SearchResult } from "@/lib/seo-api";
 
 interface PipelineState {
   scraping: StepStatus;
@@ -18,16 +19,9 @@ interface PipelineState {
 
 interface AnalysisResults {
   companyDescription: string;
+  targetAudience: string;
   queries: string[];
-  competitors: Array<{
-    query: string;
-    results: Array<{
-      url: string;
-      title: string;
-      position: number;
-      insights: string[];
-    }>;
-  }>;
+  competitors: SearchResult[];
   generatedHtml: string;
 }
 
@@ -68,41 +62,69 @@ export default function Index() {
       contentGeneration: "pending",
     });
 
-    // Simulate the agentic loop with demo data
-    // In production, this would call backend APIs
     try {
       // Step 1: Scraping
       setPipelineState((s) => ({ ...s, scraping: "processing" }));
-      await simulateDelay(2000);
+      const scrapeResult = await seoApi.scrapeWebsite(url);
+      
+      if (!scrapeResult.success || !scrapeResult.data) {
+        throw new Error(scrapeResult.error || "Failed to scrape website");
+      }
+      
       setPipelineState((s) => ({ ...s, scraping: "completed", embedding: "processing" }));
 
-      // Step 2: Embedding
-      await simulateDelay(1500);
+      // Step 2: Embedding (simulated - the analysis includes understanding the content)
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setPipelineState((s) => ({ ...s, embedding: "completed", queryGeneration: "processing" }));
 
       // Step 3: Query Generation
-      await simulateDelay(2000);
-      const queries = generateDemoQueries(url);
-      setResults({ companyDescription: "", queries, competitors: [], generatedHtml: "" });
+      const analysisResult = await seoApi.analyzeContent(scrapeResult.data.content, url);
+      
+      if (!analysisResult.success || !analysisResult.data) {
+        throw new Error(analysisResult.error || "Failed to analyze content");
+      }
+
+      const { companyDescription, targetAudience, queries } = analysisResult.data;
+      setResults({
+        companyDescription,
+        targetAudience,
+        queries,
+        competitors: [],
+        generatedHtml: "",
+      });
       setPipelineState((s) => ({ ...s, queryGeneration: "completed", competitorAnalysis: "processing" }));
 
       // Step 4: Competitor Analysis (loop through queries)
-      const competitors: AnalysisResults["competitors"] = [];
-      for (let i = 0; i < Math.min(queries.length, 5); i++) {
+      const allSearchResults: SearchResult[] = [];
+      const queriesToSearch = queries.slice(0, 5); // Limit to 5 queries
+      
+      for (let i = 0; i < queriesToSearch.length; i++) {
         setCurrentQueryIndex(i);
-        await simulateDelay(1500);
-        competitors.push({
-          query: queries[i],
-          results: generateDemoCompetitors(queries[i]),
-        });
-        setResults((r) => r && { ...r, competitors });
+        
+        const searchResult = await seoApi.searchQuery(queriesToSearch[i], url);
+        
+        if (searchResult.success && searchResult.data) {
+          allSearchResults.push(searchResult.data);
+          setResults((r) => r && { ...r, competitors: [...allSearchResults] });
+        }
       }
+      
       setPipelineState((s) => ({ ...s, competitorAnalysis: "completed", contentGeneration: "processing" }));
 
       // Step 5: Content Generation
-      await simulateDelay(2500);
-      const generatedHtml = generateDemoHtml(url, queries, competitors);
-      setResults((r) => r && { ...r, generatedHtml });
+      const generateResult = await seoApi.generateContent(
+        companyDescription,
+        targetAudience,
+        queries,
+        allSearchResults,
+        url
+      );
+
+      if (!generateResult.success || !generateResult.data) {
+        throw new Error(generateResult.error || "Failed to generate content");
+      }
+
+      setResults((r) => r && { ...r, generatedHtml: generateResult.data!.html });
       setPipelineState((s) => ({ ...s, contentGeneration: "completed" }));
 
       toast({
@@ -110,10 +132,22 @@ export default function Index() {
         description: "Your SEO content has been generated successfully.",
       });
     } catch (error) {
+      console.error("Analysis error:", error);
       toast({
         title: "Analysis Failed",
-        description: "An error occurred during analysis. Please try again.",
+        description: error instanceof Error ? error.message : "An error occurred during analysis.",
         variant: "destructive",
+      });
+      
+      // Mark current step as error
+      setPipelineState((s) => {
+        const newState = { ...s };
+        if (s.scraping === "processing") newState.scraping = "error";
+        if (s.embedding === "processing") newState.embedding = "error";
+        if (s.queryGeneration === "processing") newState.queryGeneration = "error";
+        if (s.competitorAnalysis === "processing") newState.competitorAnalysis = "error";
+        if (s.contentGeneration === "processing") newState.contentGeneration = "error";
+        return newState;
       });
     } finally {
       setIsAnalyzing(false);
@@ -207,6 +241,24 @@ export default function Index() {
 
           {/* Results Section */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Company Description */}
+            {results?.companyDescription && (
+              <ResultCard title="Company Analysis" icon={<FileText className="w-5 h-5" />}>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground mb-1">What they do</h4>
+                    <p className="text-foreground">{results.companyDescription}</p>
+                  </div>
+                  {results.targetAudience && (
+                    <div>
+                      <h4 className="text-sm font-medium text-muted-foreground mb-1">Target Audience</h4>
+                      <p className="text-foreground">{results.targetAudience}</p>
+                    </div>
+                  )}
+                </div>
+              </ResultCard>
+            )}
+
             {/* Generated Queries */}
             {results?.queries && results.queries.length > 0 && (
               <ResultCard title="Generated Search Queries" icon={<Search className="w-5 h-5" />}>
@@ -217,9 +269,7 @@ export default function Index() {
                       query={query}
                       index={i}
                       isActive={currentQueryIndex === i}
-                      isCompleted={
-                        results.competitors.some((c) => c.query === query)
-                      }
+                      isCompleted={results.competitors.some((c) => c.query === query)}
                     />
                   ))}
                 </div>
@@ -236,7 +286,7 @@ export default function Index() {
                         Query: <span className="text-foreground">"{comp.query}"</span>
                       </h4>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {comp.results.slice(0, 4).map((result, j) => (
+                        {comp.competitors.slice(0, 4).map((result, j) => (
                           <CompetitorCard key={j} {...result} />
                         ))}
                       </div>
@@ -271,131 +321,4 @@ export default function Index() {
       </main>
     </div>
   );
-}
-
-// Helper functions
-function simulateDelay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function generateDemoQueries(url: string): string[] {
-  const domain = url.replace(/https?:\/\//, "").replace(/\/$/, "").split("/")[0];
-  return [
-    `best ${domain.split(".")[0]} alternatives`,
-    `${domain.split(".")[0]} vs competitors`,
-    `how to use ${domain.split(".")[0]}`,
-    `${domain.split(".")[0]} pricing comparison`,
-    `${domain.split(".")[0]} features guide`,
-    `${domain.split(".")[0]} tutorials`,
-    `${domain.split(".")[0]} reviews 2024`,
-    `is ${domain.split(".")[0]} worth it`,
-    `${domain.split(".")[0]} integrations`,
-    `${domain.split(".")[0]} for beginners`,
-  ];
-}
-
-function generateDemoCompetitors(query: string): Array<{
-  url: string;
-  title: string;
-  position: number;
-  insights: string[];
-}> {
-  return [
-    {
-      url: "https://competitor1.com/blog/article",
-      title: `Complete Guide: ${query}`,
-      position: 1,
-      insights: [
-        "Strong keyword density in H1 and H2 tags",
-        "Comprehensive 3000+ word content",
-        "Multiple internal links to related topics",
-      ],
-    },
-    {
-      url: "https://competitor2.com/resources",
-      title: `${query} - Expert Tips`,
-      position: 2,
-      insights: [
-        "Rich media with infographics",
-        "FAQ schema markup implemented",
-        "High engagement metrics",
-      ],
-    },
-    {
-      url: "https://competitor3.com/guide",
-      title: `The Ultimate ${query} Resource`,
-      position: 3,
-      insights: [
-        "Updated content with fresh 2024 data",
-        "Strong backlink profile",
-        "Table of contents for easy navigation",
-      ],
-    },
-    {
-      url: "https://competitor4.com/article",
-      title: `${query} Made Simple`,
-      position: 4,
-      insights: [
-        "Video content embedded",
-        "Clear call-to-action buttons",
-        "Social proof with testimonials",
-      ],
-    },
-  ];
-}
-
-function generateDemoHtml(
-  url: string,
-  queries: string[],
-  competitors: AnalysisResults["competitors"]
-): string {
-  const domain = url.replace(/https?:\/\//, "").replace(/\/$/, "").split("/")[0];
-  const brandName = domain.split(".")[0].charAt(0).toUpperCase() + domain.split(".")[0].slice(1);
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Discover why ${brandName} is the leading solution for your needs. Compare features, pricing, and get expert tips.">
-  <title>The Complete Guide to ${brandName} | Features, Pricing & Expert Tips</title>
-</head>
-<body>
-  <article>
-    <h1>The Complete Guide to ${brandName}</h1>
-    
-    <section>
-      <h2>Why Choose ${brandName}?</h2>
-      <p>${brandName} stands out from competitors with its innovative approach and user-friendly interface. Unlike other solutions, ${brandName} offers...</p>
-    </section>
-
-    <section>
-      <h2>Key Features & Benefits</h2>
-      <ul>
-        <li><strong>Feature 1:</strong> Advanced capabilities that save time</li>
-        <li><strong>Feature 2:</strong> Seamless integrations with your tools</li>
-        <li><strong>Feature 3:</strong> Enterprise-grade security</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>How to Get Started</h2>
-      <ol>
-        <li>Sign up for a free account</li>
-        <li>Complete the onboarding process</li>
-        <li>Start using ${brandName} immediately</li>
-      </ol>
-    </section>
-
-    <section>
-      <h2>Frequently Asked Questions</h2>
-      <h3>Is ${brandName} right for beginners?</h3>
-      <p>Absolutely! ${brandName} is designed with beginners in mind...</p>
-      
-      <h3>What integrations are available?</h3>
-      <p>${brandName} connects with over 100+ popular tools...</p>
-    </section>
-  </article>
-</body>
-</html>`;
 }
