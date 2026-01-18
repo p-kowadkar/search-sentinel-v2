@@ -106,9 +106,7 @@ Return only valid HTML starting with <!DOCTYPE html>.`;
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.6,
-        max_completion_tokens: 4096,
-        top_p: 0.9,
-        frequency_penalty: 1,
+        max_tokens: 4096,
       }),
     });
 

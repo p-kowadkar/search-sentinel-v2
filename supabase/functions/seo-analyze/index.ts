@@ -100,9 +100,7 @@ Respond with a JSON object containing companyDescription, targetAudience, and qu
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.6,
-        max_completion_tokens: 2048,
-        top_p: 0.9,
-        frequency_penalty: 1,
+        max_tokens: 2048,
       }),
     });
 
