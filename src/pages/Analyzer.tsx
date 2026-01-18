@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { Search, FileText, BarChart3, Zap, Code, Target, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, FileText, BarChart3, Zap, Target, BookOpen, LogOut, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useDemo } from "@/hooks/useDemo";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PipelineStep, StepStatus } from "@/components/PipelineStep";
 import { UrlInput } from "@/components/UrlInput";
 import { ResultCard } from "@/components/ResultCard";
@@ -26,8 +31,12 @@ interface AnalysisResults {
   scrapedContent: string;
 }
 
-export default function Index() {
+export default function Analyzer() {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut, loading: authLoading } = useAuth();
+  const { isDemoMode, disableDemoMode, demoUserId } = useDemo();
+  
   const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [currentQueryIndex, setCurrentQueryIndex] = useState(-1);
@@ -39,6 +48,25 @@ export default function Index() {
     contentGeneration: "pending",
   });
   const [results, setResults] = useState<AnalysisResults | null>(null);
+
+  // Redirect if not authenticated and not in demo mode
+  useEffect(() => {
+    if (!authLoading && !user && !isDemoMode) {
+      navigate("/auth");
+    }
+  }, [user, isDemoMode, authLoading, navigate]);
+
+  // Get the effective user ID for rate limiting
+  const effectiveUserId = user?.id || (isDemoMode ? demoUserId : null);
+
+  const handleSignOut = async () => {
+    if (isDemoMode) {
+      disableDemoMode();
+    } else {
+      await signOut();
+    }
+    navigate("/");
+  };
 
   const handleAnalyze = async () => {
     if (!url.trim()) {
@@ -75,17 +103,16 @@ export default function Index() {
       // Check if content was actually scraped
       const scrapedContent = scrapeResult.data.content?.trim() || "";
       if (!scrapedContent) {
-        // Use URL-based fallback content for analysis
         console.warn("No content scraped, using URL-based analysis");
       }
       
       setPipelineState((s) => ({ ...s, scraping: "completed", embedding: "processing" }));
 
-      // Step 2: Embedding (simulated - the analysis includes understanding the content)
+      // Step 2: Embedding (simulated)
       await new Promise((resolve) => setTimeout(resolve, 500));
       setPipelineState((s) => ({ ...s, embedding: "completed", queryGeneration: "processing" }));
 
-      // Step 3: Query Generation - use URL if no content available
+      // Step 3: Query Generation
       const contentToAnalyze = scrapedContent || `Website: ${url} - Analyze based on URL structure and domain.`;
       const analysisResult = await seoApi.analyzeContent(contentToAnalyze, url);
       
@@ -104,13 +131,12 @@ export default function Index() {
       });
       setPipelineState((s) => ({ ...s, queryGeneration: "completed", competitorAnalysis: "processing" }));
 
-      // Step 4: Competitor Analysis (loop through queries)
+      // Step 4: Competitor Analysis
       const allSearchResults: SearchResult[] = [];
-      const queriesToSearch = queries.slice(0, 5); // Limit to 5 queries
+      const queriesToSearch = queries.slice(0, 5);
       
       for (let i = 0; i < queriesToSearch.length; i++) {
         setCurrentQueryIndex(i);
-        
         const searchResult = await seoApi.searchQuery(queriesToSearch[i], url);
         
         if (searchResult.success && searchResult.data) {
@@ -121,7 +147,7 @@ export default function Index() {
       
       setPipelineState((s) => ({ ...s, competitorAnalysis: "completed", contentGeneration: "processing" }));
 
-      // Step 5: Per-Query Content Generation with Guidelines
+      // Step 5: Content Generation
       const allQueryContents: QueryContentResult[] = [];
       
       for (let i = 0; i < allSearchResults.length; i++) {
@@ -132,7 +158,7 @@ export default function Index() {
           companyDescription,
           targetAudience,
           url,
-          scrapeResult.data.content.slice(0, 2000), // Send excerpt of current content
+          scrapeResult.data.content.slice(0, 2000),
           allSearchResults[i]
         );
 
@@ -156,7 +182,6 @@ export default function Index() {
         variant: "destructive",
       });
       
-      // Mark current step as error
       setPipelineState((s) => {
         const newState = { ...s };
         if (s.scraping === "processing") newState.scraping = "error";
@@ -172,19 +197,49 @@ export default function Index() {
     }
   };
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <div 
+              className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center cursor-pointer"
+              onClick={() => navigate("/")}
+            >
               <Target className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
               <h1 className="font-bold text-lg">SEO Gap Analyzer</h1>
               <p className="text-xs text-muted-foreground">Agentic Content Intelligence</p>
             </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {isDemoMode && (
+              <Badge variant="secondary" className="bg-accent/20 text-accent">
+                <Sparkles className="w-3 h-3 mr-1" />
+                Demo Mode
+              </Badge>
+            )}
+            {user && (
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {user.email}
+              </span>
+            )}
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              {isDemoMode ? "Exit Demo" : "Sign Out"}
+            </Button>
           </div>
         </div>
       </header>
@@ -199,6 +254,11 @@ export default function Index() {
             Our AI agent scrapes your website, analyzes search results, and generates
             optimized content to help you rank for valuable keywords.
           </p>
+          {isDemoMode && (
+            <p className="text-sm text-accent mt-2">
+              🎉 You're using the demo! Limited to 3 analyses.
+            </p>
+          )}
         </div>
 
         {/* URL Input */}
@@ -313,7 +373,7 @@ export default function Index() {
               </ResultCard>
             )}
 
-            {/* Generated Per-Query Content with Guidelines */}
+            {/* Generated Content */}
             {results?.queryContents && results.queryContents.length > 0 && (
               <ResultCard title="Content Strategies & Generated Content" icon={<BookOpen className="w-5 h-5" />}>
                 <div className="space-y-4">
