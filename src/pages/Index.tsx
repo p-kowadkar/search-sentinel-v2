@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { Search, FileText, BarChart3, Zap, Code, Target } from "lucide-react";
+import { Search, FileText, BarChart3, Zap, Code, Target, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PipelineStep, StepStatus } from "@/components/PipelineStep";
 import { UrlInput } from "@/components/UrlInput";
 import { ResultCard } from "@/components/ResultCard";
 import { QueryChip } from "@/components/QueryChip";
 import { CompetitorCard } from "@/components/CompetitorCard";
-import { HtmlPreview } from "@/components/HtmlPreview";
-import { seoApi, SearchResult } from "@/lib/seo-api";
+import { QueryContentCard } from "@/components/QueryContentCard";
+import { seoApi, SearchResult, QueryContentResult } from "@/lib/seo-api";
 
 interface PipelineState {
   scraping: StepStatus;
@@ -22,7 +22,8 @@ interface AnalysisResults {
   targetAudience: string;
   queries: string[];
   competitors: SearchResult[];
-  generatedHtml: string;
+  queryContents: QueryContentResult[];
+  scrapedContent: string;
 }
 
 export default function Index() {
@@ -90,7 +91,8 @@ export default function Index() {
         targetAudience,
         queries,
         competitors: [],
-        generatedHtml: "",
+        queryContents: [],
+        scrapedContent: scrapeResult.data.content,
       });
       setPipelineState((s) => ({ ...s, queryGeneration: "completed", competitorAnalysis: "processing" }));
 
@@ -111,20 +113,27 @@ export default function Index() {
       
       setPipelineState((s) => ({ ...s, competitorAnalysis: "completed", contentGeneration: "processing" }));
 
-      // Step 5: Content Generation
-      const generateResult = await seoApi.generateContent(
-        companyDescription,
-        targetAudience,
-        queries,
-        allSearchResults,
-        url
-      );
+      // Step 5: Per-Query Content Generation with Guidelines
+      const allQueryContents: QueryContentResult[] = [];
+      
+      for (let i = 0; i < allSearchResults.length; i++) {
+        setCurrentQueryIndex(i);
+        
+        const generateResult = await seoApi.generateQueryContent(
+          allSearchResults[i].query,
+          companyDescription,
+          targetAudience,
+          url,
+          scrapeResult.data.content.slice(0, 2000), // Send excerpt of current content
+          allSearchResults[i]
+        );
 
-      if (!generateResult.success || !generateResult.data) {
-        throw new Error(generateResult.error || "Failed to generate content");
+        if (generateResult.success && generateResult.data) {
+          allQueryContents.push(generateResult.data);
+          setResults((r) => r && { ...r, queryContents: [...allQueryContents] });
+        }
       }
-
-      setResults((r) => r && { ...r, generatedHtml: generateResult.data!.html });
+      
       setPipelineState((s) => ({ ...s, contentGeneration: "completed" }));
 
       toast({
@@ -296,10 +305,14 @@ export default function Index() {
               </ResultCard>
             )}
 
-            {/* Generated HTML Content */}
-            {results?.generatedHtml && (
-              <ResultCard title="Generated SEO Content" icon={<Code className="w-5 h-5" />}>
-                <HtmlPreview html={results.generatedHtml} />
+            {/* Generated Per-Query Content with Guidelines */}
+            {results?.queryContents && results.queryContents.length > 0 && (
+              <ResultCard title="Content Strategies & Generated Content" icon={<BookOpen className="w-5 h-5" />}>
+                <div className="space-y-4">
+                  {results.queryContents.map((result, i) => (
+                    <QueryContentCard key={i} result={result} index={i} />
+                  ))}
+                </div>
               </ResultCard>
             )}
 
