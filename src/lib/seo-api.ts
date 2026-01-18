@@ -30,6 +30,30 @@ export interface GenerateResult {
   html: string;
 }
 
+export interface ContentGuideline {
+  title: string;
+  currentGaps: string[];
+  competitorStrengths: string[];
+  recommendedApproach: string;
+  keyDifferentiators: string[];
+  targetWordCount: number;
+  primaryKeywords: string[];
+  secondaryKeywords: string[];
+}
+
+export interface QueryContent {
+  html: string;
+  metaTitle: string;
+  metaDescription: string;
+  summary: string;
+}
+
+export interface QueryContentResult {
+  query: string;
+  guideline: ContentGuideline;
+  content: QueryContent;
+}
+
 async function invokeFunction<T>(
   functionName: string,
   body: Record<string, unknown>
@@ -68,7 +92,7 @@ export const seoApi = {
     return invokeFunction<SearchResult>('seo-search', { query, companyUrl });
   },
 
-  // Step 4: Generate SEO content
+  // Step 4: Generate SEO content (legacy - single output)
   async generateContent(
     companyDescription: string,
     targetAudience: string,
@@ -82,6 +106,25 @@ export const seoApi = {
       queries,
       competitorAnalysis,
       url,
+    });
+  },
+
+  // Step 4b: Generate per-query content with guidelines
+  async generateQueryContent(
+    query: string,
+    companyDescription: string,
+    targetAudience: string,
+    companyUrl: string,
+    currentContent: string,
+    competitorAnalysis: SearchResult
+  ): Promise<{ success: boolean; data?: QueryContentResult; error?: string }> {
+    return invokeFunction<QueryContentResult>('seo-generate-query', {
+      query,
+      companyDescription,
+      targetAudience,
+      companyUrl,
+      currentContent,
+      competitorAnalysis,
     });
   },
 };
