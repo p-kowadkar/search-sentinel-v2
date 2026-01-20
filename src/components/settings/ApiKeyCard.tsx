@@ -144,11 +144,11 @@ export function ApiKeyCard({
         {isOpenRouter && (
           <div className="space-y-2">
             <Label htmlFor={`${provider.id}-model`} className="text-sm">
-              Model ID (e.g., anthropic/claude-4.5-sonnet)
+              Model ID (e.g., anthropic/claude-sonnet-4.5)
             </Label>
             <Input
               id={`${provider.id}-model`}
-              placeholder="anthropic/claude-4.5-sonnet"
+              placeholder="anthropic/claude-sonnet-4.5"
               value={modelId}
               onChange={(e) => setModelId(e.target.value)}
             />
