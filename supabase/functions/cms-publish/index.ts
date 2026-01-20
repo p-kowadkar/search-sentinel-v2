@@ -62,9 +62,9 @@ async function publishToWordPress(
 
     const data = await response.json();
     return { success: true, postId: data.id.toString() };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('WordPress publish error:', error);
-    return { success: false, error: error.message || 'Failed to connect to WordPress' };
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to connect to WordPress' };
   }
 }
 
@@ -142,9 +142,9 @@ async function publishToSquarespace(
 
     const data = await response.json();
     return { success: true, itemId: data.id };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Squarespace publish error:', error);
-    return { success: false, error: error.message || 'Failed to connect to Squarespace' };
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to connect to Squarespace' };
   }
 }
 

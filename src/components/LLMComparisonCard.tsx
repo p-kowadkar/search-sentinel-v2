@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Bot, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Loader2, Sparkles } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, AlertCircle, CheckCircle, Loader2, Sparkles, Settings } from "lucide-react";
 import { LLMComparisonResult, LLMBenchmarkResult } from "@/lib/seo-api";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 interface LLMComparisonCardProps {
   comparison: LLMComparisonResult;
   isLoading?: boolean;
+  configuredProviders?: string[]; // List of provider IDs that user has configured
 }
 
 const providerColors: Record<string, string> = {
@@ -13,13 +16,19 @@ const providerColors: Record<string, string> = {
   google: "from-blue-500/20 to-blue-500/5 border-blue-500/30",
   perplexity: "from-purple-500/20 to-purple-500/5 border-purple-500/30",
   xai: "from-orange-500/20 to-orange-500/5 border-orange-500/30",
+  anthropic: "from-amber-500/20 to-amber-500/5 border-amber-500/30",
+  deepseek: "from-cyan-500/20 to-cyan-500/5 border-cyan-500/30",
+  openrouter: "from-pink-500/20 to-pink-500/5 border-pink-500/30",
 };
 
 const providerIcons: Record<string, string> = {
   openai: "🤖",
-  google: "✨",
+  google: "💎",
   perplexity: "🔍",
   xai: "🚀",
+  anthropic: "🧠",
+  deepseek: "🌊",
+  openrouter: "🌐",
 };
 
 function LLMResultCard({ result }: { result: LLMBenchmarkResult }) {
@@ -100,9 +109,16 @@ function LLMResultCard({ result }: { result: LLMBenchmarkResult }) {
   );
 }
 
-export function LLMComparisonCard({ comparison, isLoading }: LLMComparisonCardProps) {
+export function LLMComparisonCard({ comparison, isLoading, configuredProviders }: LLMComparisonCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const availableCount = comparison.results.filter(r => r.available).length;
+  
+  // Filter results to only show configured providers
+  const filteredResults = configuredProviders 
+    ? comparison.results.filter(r => configuredProviders.includes(r.provider))
+    : comparison.results;
+  
+  const availableCount = filteredResults.filter(r => r.available).length;
+  const hasNoProviders = !configuredProviders || configuredProviders.length === 0;
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -122,8 +138,10 @@ export function LLMComparisonCard({ comparison, isLoading }: LLMComparisonCardPr
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Querying LLMs...
                 </span>
+              ) : hasNoProviders ? (
+                "No LLM providers configured"
               ) : (
-                `${availableCount} of ${comparison.results.length} models responded`
+                `${availableCount} of ${filteredResults.length} models responded`
               )}
             </p>
           </div>
@@ -137,30 +155,53 @@ export function LLMComparisonCard({ comparison, isLoading }: LLMComparisonCardPr
 
       {isExpanded && (
         <div className="border-t border-border p-4 space-y-4">
-          {/* Query being compared */}
-          <div className="bg-muted/30 rounded-lg p-3">
-            <span className="text-xs text-muted-foreground uppercase tracking-wide">Query</span>
-            <p className="text-sm font-medium text-foreground mt-1">{comparison.query}</p>
-          </div>
-
-          {/* LLM Results Grid */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {comparison.results.map((result, i) => (
-              <LLMResultCard key={result.provider} result={result} />
-            ))}
-          </div>
-
-          {/* Correlation Analysis */}
-          {comparison.correlationAnalysis && (
-            <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4 border border-primary/20">
-              <h4 className="font-semibold text-sm text-foreground mb-2 flex items-center gap-2">
-                <Bot className="w-4 h-4 text-primary" />
-                Correlation Analysis
-              </h4>
-              <p className="text-sm text-muted-foreground">
-                {comparison.correlationAnalysis}
-              </p>
+          {hasNoProviders ? (
+            /* No Providers Message */
+            <div className="text-center py-8 space-y-4">
+              <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Bot className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div>
+                <h4 className="font-medium text-foreground">No LLM Providers Configured</h4>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Add your API keys in Settings to compare responses from different LLMs.
+                </p>
+              </div>
+              <Button asChild>
+                <Link to="/settings">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Configure API Keys
+                </Link>
+              </Button>
             </div>
+          ) : (
+            <>
+              {/* Query being compared */}
+              <div className="bg-muted/30 rounded-lg p-3">
+                <span className="text-xs text-muted-foreground uppercase tracking-wide">Query</span>
+                <p className="text-sm font-medium text-foreground mt-1">{comparison.query}</p>
+              </div>
+
+              {/* LLM Results Grid */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredResults.map((result) => (
+                  <LLMResultCard key={result.provider} result={result} />
+                ))}
+              </div>
+
+              {/* Correlation Analysis */}
+              {comparison.correlationAnalysis && (
+                <div className="bg-gradient-to-r from-primary/5 to-transparent rounded-lg p-4 border border-primary/20">
+                  <h4 className="font-semibold text-sm text-foreground mb-2 flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-primary" />
+                    Correlation Analysis
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    {comparison.correlationAnalysis}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
