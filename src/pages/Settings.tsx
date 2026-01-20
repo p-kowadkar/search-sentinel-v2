@@ -5,13 +5,14 @@ import { useTheme } from '@/hooks/useTheme';
 import { LLM_PROVIDERS, LLMProviderId } from '@/lib/llm-providers';
 import { ApiKeyCard } from '@/components/settings/ApiKeyCard';
 import { ScraperConfigCard } from '@/components/settings/ScraperConfigCard';
+import { DefaultLLMCard } from '@/components/settings/DefaultLLMCard';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Settings as SettingsIcon, Key, Bot, Shield, Palette, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, Key, Bot, Shield, Palette, Moon, Sun, Sparkles } from 'lucide-react';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -134,14 +135,37 @@ export default function Settings() {
             </div>
           </div>
 
+          {/* Default LLM - Free Tier */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Default LLM (Free Tier)</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              We provide GPT-5.2 Mini for your first 4 analyses. This is automatically disabled when you add your own OpenAI API key.
+            </p>
+
+            {loading ? (
+              <Skeleton className="h-36" />
+            ) : (
+              <DefaultLLMCard
+                isActive={true}
+                remainingUses={4} // TODO: Track actual remaining uses in database
+                hasOwnOpenAIKey={!!getApiKeyForProvider('openai')}
+              />
+            )}
+          </div>
+
+          <Separator />
+
           {/* LLM Providers */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">LLM Providers</h3>
+              <h3 className="text-lg font-semibold">Your LLM Providers</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Configure multiple providers to compare their responses. Only providers with configured keys will appear in LLM Comparison results.
+              Add your own API keys to unlock unlimited analyses and compare responses across multiple providers.
             </p>
 
             {loading ? (

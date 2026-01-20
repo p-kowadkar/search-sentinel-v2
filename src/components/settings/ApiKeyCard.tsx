@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Eye, EyeOff, Trash2, ExternalLink, Check } from 'lucide-react';
 import { LLMProvider, LLMProviderId } from '@/lib/llm-providers';
 
@@ -23,7 +24,7 @@ export function ApiKeyCard({
   onDelete,
 }: ApiKeyCardProps) {
   const [apiKey, setApiKey] = useState(currentKey || '');
-  const [modelId, setModelId] = useState(currentModelId || '');
+  const [modelId, setModelId] = useState(currentModelId || (provider.models.length > 0 ? provider.models[0].id : ''));
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -31,11 +32,13 @@ export function ApiKeyCard({
   const isConfigured = !!currentKey;
   const hasChanges = apiKey !== (currentKey || '') || modelId !== (currentModelId || '');
   const isOpenRouter = provider.id === 'openrouter';
+  const hasModels = provider.models.length > 0;
 
   const handleSave = async () => {
     if (!apiKey.trim()) return;
     setSaving(true);
-    const success = await onSave(provider.id, apiKey.trim(), isOpenRouter ? modelId.trim() : undefined);
+    const selectedModelId = isOpenRouter ? modelId.trim() : (hasModels ? modelId : undefined);
+    const success = await onSave(provider.id, apiKey.trim(), selectedModelId);
     if (success) {
       setShowKey(false);
     }
@@ -47,7 +50,7 @@ export function ApiKeyCard({
     const success = await onDelete(provider.id);
     if (success) {
       setApiKey('');
-      setModelId('');
+      setModelId(provider.models.length > 0 ? provider.models[0].id : '');
     }
     setDeleting(false);
   };
@@ -56,6 +59,8 @@ export function ApiKeyCard({
     if (key.length <= 8) return '••••••••';
     return key.slice(0, 4) + '••••••••' + key.slice(-4);
   };
+
+  const selectedModel = provider.models.find(m => m.id === modelId);
 
   return (
     <Card className={isConfigured ? 'border-primary/30 bg-primary/5' : ''}>
@@ -104,24 +109,49 @@ export function ApiKeyCard({
           </div>
         </div>
 
-        {isOpenRouter && (
+        {/* Model Selection - Dropdown for providers with models */}
+        {hasModels && !isOpenRouter && (
           <div className="space-y-2">
             <Label htmlFor={`${provider.id}-model`} className="text-sm">
-              Model ID (e.g., anthropic/claude-3.5-sonnet)
+              Model
             </Label>
-            <Input
-              id={`${provider.id}-model`}
-              placeholder="Enter OpenRouter model ID"
-              value={modelId}
-              onChange={(e) => setModelId(e.target.value)}
-            />
+            <Select value={modelId} onValueChange={setModelId}>
+              <SelectTrigger id={`${provider.id}-model`} className="w-full bg-background">
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border z-50">
+                {provider.models.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{model.name}</span>
+                      {model.supportsReasoning && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">
+                          Reasoning
+                        </Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedModel && (
+              <p className="text-xs text-muted-foreground">{selectedModel.description}</p>
+            )}
           </div>
         )}
 
-        {!isOpenRouter && provider.models.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            <span className="font-medium">Available models:</span>{' '}
-            {provider.models.map(m => m.name).join(', ')}
+        {/* OpenRouter - Custom model ID input */}
+        {isOpenRouter && (
+          <div className="space-y-2">
+            <Label htmlFor={`${provider.id}-model`} className="text-sm">
+              Model ID (e.g., anthropic/claude-4.5-sonnet)
+            </Label>
+            <Input
+              id={`${provider.id}-model`}
+              placeholder="anthropic/claude-4.5-sonnet"
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+            />
           </div>
         )}
 
