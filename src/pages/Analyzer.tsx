@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Search, FileText, BarChart3, Zap, Target, BookOpen, LogOut, Sparkles, Settings } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { Search, FileText, BarChart3, Zap, Target, BookOpen, LogOut, Sparkles, Settings, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useDemo } from "@/hooks/useDemo";
+import { useUserApiKeys } from "@/hooks/useUserApiKeys";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PipelineStep, StepStatus } from "@/components/PipelineStep";
@@ -37,6 +38,7 @@ export default function Analyzer() {
   const { toast } = useToast();
   const { user, signOut, loading: authLoading } = useAuth();
   const { isDemoMode, disableDemoMode, demoUserId } = useDemo();
+  const { getConfiguredProviders } = useUserApiKeys();
   
   const [url, setUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -238,6 +240,16 @@ export default function Analyzer() {
                 <span className="text-sm text-muted-foreground hidden sm:inline">
                   {user.email}
                 </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  asChild
+                  title="API Settings"
+                >
+                  <Link to="/settings">
+                    <Key className="w-4 h-4" />
+                  </Link>
+                </Button>
                 <Button 
                   variant="ghost" 
                   size="sm" 

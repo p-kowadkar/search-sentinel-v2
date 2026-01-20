@@ -1,4 +1,4 @@
-import { checkApiRateLimit, recordUsageEvent } from '@shared/flowglad.ts';
+import { checkApiRateLimit, recordUsageEvent } from '../_shared/flowglad.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
