@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sparkles, Gift, Mail, ArrowLeft } from 'lucide-react';
+import { Loader2, Sparkles, Gift, Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
-type AuthStep = 'credentials' | 'verify-otp';
+type AuthStep = 'credentials' | 'check-email';
 
 export default function Auth() {
   const { user, loading } = useAuth();
@@ -28,7 +27,7 @@ export default function Auth() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  const [otp, setOtp] = useState('');
+  
 
   if (loading) {
     return (
@@ -61,10 +60,10 @@ export default function Auth() {
         
         if (!otpError) {
           setPendingEmail(loginEmail);
-          setStep('verify-otp');
+          setStep('check-email');
           toast({
             title: 'Email Not Verified',
-            description: 'We sent a new verification code to your email.',
+            description: 'Check your email and click the verification link.',
           });
         } else {
           toast({
@@ -121,51 +120,18 @@ export default function Auth() {
       });
     } else {
       setPendingEmail(signupEmail);
-      setStep('verify-otp');
+      setStep('check-email');
       toast({
-        title: 'Verification Code Sent!',
-        description: 'Check your email for the 6-digit code.',
+        title: 'Verification Email Sent!',
+        description: 'Check your email and click the link to verify.',
       });
     }
     
     setIsSubmitting(false);
   };
 
-  const handleVerifyOtp = async () => {
-    if (otp.length !== 6) {
-      toast({
-        title: 'Invalid Code',
-        description: 'Please enter the complete 6-digit code.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    const { error } = await supabase.auth.verifyOtp({
-      email: pendingEmail,
-      token: otp,
-      type: 'signup',
-    });
-    
-    if (error) {
-      toast({
-        title: 'Verification Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } else {
-      toast({
-        title: 'Email Verified!',
-        description: 'Your account is now active.',
-      });
-    }
-    
-    setIsSubmitting(false);
-  };
 
-  const handleResendOtp = async () => {
+  const handleResendEmail = async () => {
     setIsSubmitting(true);
     
     const { error } = await supabase.auth.resend({
@@ -181,16 +147,16 @@ export default function Auth() {
       });
     } else {
       toast({
-        title: 'Code Resent!',
-        description: 'Check your email for a new verification code.',
+        title: 'Email Resent!',
+        description: 'Check your inbox for the verification link.',
       });
     }
     
     setIsSubmitting(false);
   };
 
-  // OTP Verification Step
-  if (step === 'verify-otp') {
+  // Check Email Step (Magic Link)
+  if (step === 'check-email') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
         <Card className="w-full max-w-md">
@@ -198,59 +164,41 @@ export default function Auth() {
             <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
               <Mail className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>Verify Your Email</CardTitle>
+            <CardTitle>Check Your Email</CardTitle>
             <CardDescription>
-              We sent a 6-digit code to <span className="font-medium text-foreground">{pendingEmail}</span>
+              We sent a verification link to <span className="font-medium text-foreground">{pendingEmail}</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex justify-center">
-              <InputOTP
-                maxLength={6}
-                value={otp}
-                onChange={setOtp}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                </InputOTPGroup>
-              </InputOTP>
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-1">Click the "Verify Email" button</p>
+                  <p>Open the email we just sent and click the verification button to activate your account.</p>
+                </div>
+              </div>
             </div>
-            
-            <Button 
-              onClick={handleVerifyOtp} 
-              className="w-full" 
-              disabled={isSubmitting || otp.length !== 6}
-            >
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Verify Email
-            </Button>
             
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Didn't receive the code?
+                Didn't receive the email?
               </p>
               <Button 
-                variant="ghost" 
+                variant="outline" 
                 size="sm"
-                onClick={handleResendOtp}
+                onClick={handleResendEmail}
                 disabled={isSubmitting}
               >
-                Resend Code
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Resend Verification Email
               </Button>
             </div>
             
             <Button 
               variant="ghost" 
               className="w-full"
-              onClick={() => {
-                setStep('credentials');
-                setOtp('');
-              }}
+              onClick={() => setStep('credentials')}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Sign In
@@ -367,7 +315,7 @@ export default function Auth() {
                   Create Account
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
-                  We'll send a verification code to your email
+                  We'll send a verification link to your email
                 </p>
               </form>
             </TabsContent>
