@@ -73,7 +73,7 @@ export function DefaultLLMCard({ isActive, remainingUses, hasOwnOpenAIKey }: Def
               <span className="text-2xl font-bold text-primary">{remainingUses}</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              We provide GPT-5.2 Mini for your first {remainingUses} analyses. Add your own OpenAI API key to 
+              We provide GPT-5 Mini for your first {remainingUses} analyses. Add your own OpenAI API key to 
               continue using the platform after your free trial.
             </p>
           </>
