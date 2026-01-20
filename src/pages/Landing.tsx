@@ -30,8 +30,7 @@ export default function Landing() {
   };
 
   const handleTryDemo = () => {
-    enableDemoMode();
-    navigate("/app");
+    navigate("/auth?demo=true");
   };
 
   const features = [
@@ -149,7 +148,7 @@ export default function Landing() {
           </div>
           
           <p className="text-sm text-muted-foreground mt-4">
-            No credit card required • Demo available instantly
+            No credit card required • <span className="text-primary font-medium">4 free analyses per account</span>
           </p>
         </div>
       </section>

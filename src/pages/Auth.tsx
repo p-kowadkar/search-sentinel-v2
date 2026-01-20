@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Gift } from 'lucide-react';
 
 export default function Auth() {
   const { user, loading, signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const isDemo = searchParams.get('demo') === 'true';
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [loginEmail, setLoginEmail] = useState('');
@@ -90,10 +92,28 @@ export default function Auth() {
             <span className="text-xl font-bold">SEO Gap Analyzer</span>
           </div>
           <CardTitle>Welcome</CardTitle>
-          <CardDescription>Sign in to manage your company profiles</CardDescription>
+          <CardDescription>
+            {isDemo 
+              ? "Create a free account to get started" 
+              : "Sign in to manage your company profiles"
+            }
+          </CardDescription>
+          
+          {/* Demo Banner */}
+          {isDemo && (
+            <div className="mt-4 p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center justify-center gap-2 text-primary">
+                <Gift className="h-4 w-4" />
+                <span className="text-sm font-medium">4 Free Analyses Included!</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sign up now and get 4 free SEO analyses to try out the platform.
+              </p>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue={isDemo ? "signup" : "login"} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
