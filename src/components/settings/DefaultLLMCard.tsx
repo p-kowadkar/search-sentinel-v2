@@ -44,7 +44,7 @@ export function DefaultLLMCard({ isActive, remainingUses, hasOwnOpenAIKey }: Def
                 )}
               </CardTitle>
               <CardDescription className="text-xs">
-                Powered by GPT-5.2 Mini
+                Powered by GPT-5 Mini
               </CardDescription>
             </div>
           </div>
@@ -82,7 +82,7 @@ export function DefaultLLMCard({ isActive, remainingUses, hasOwnOpenAIKey }: Def
         <div className="pt-2 border-t border-border/50">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="font-medium">Model:</span>
-            <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">gpt-5.2-mini</code>
+            <code className="px-1.5 py-0.5 rounded bg-muted text-foreground">gpt-5-mini</code>
           </div>
         </div>
       </CardContent>
