@@ -1,19 +1,31 @@
 import { checkApiRateLimit, recordUsageEvent } from '../_shared/flowglad.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Extract user ID from authorization header
-function getUserIdFromRequest(req: Request): string | null {
+// Securely extract and verify user ID from authorization header using Supabase JWT validation
+async function getVerifiedUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader) return null;
+  if (!authHeader?.startsWith('Bearer ')) return null;
   
   try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    
     const token = authHeader.replace('Bearer ', '');
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.sub || null;
+    const { data, error } = await supabase.auth.getClaims(token);
+    
+    if (error || !data?.claims?.sub) {
+      return null;
+    }
+    
+    return data.claims.sub;
   } catch {
     return null;
   }
@@ -35,7 +47,7 @@ Deno.serve(async (req) => {
     }
 
     // Check rate limit
-    const userId = getUserIdFromRequest(req);
+    const userId = await getVerifiedUserId(req);
     if (userId) {
       const { allowed, error } = await checkApiRateLimit(userId, 'search-requests');
       
