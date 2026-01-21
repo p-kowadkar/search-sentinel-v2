@@ -1,6 +1,7 @@
 import { Copy, Check, Download } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import DOMPurify from "dompurify";
 
 interface HtmlPreviewProps {
   html: string;
@@ -8,6 +9,15 @@ interface HtmlPreviewProps {
 
 export function HtmlPreview({ html }: HtmlPreviewProps) {
   const [copied, setCopied] = useState(false);
+
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedHtml = useMemo(() => {
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'li', 'a', 'strong', 'em', 'br', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'code', 'pre'],
+      ALLOWED_ATTR: ['href', 'title', 'class', 'id', 'target', 'rel'],
+      ALLOW_DATA_ATTR: false
+    });
+  }, [html]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(html);
@@ -71,7 +81,7 @@ export function HtmlPreview({ html }: HtmlPreviewProps) {
         </div>
         <div
           className="p-6 bg-card prose prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: html }}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
         />
       </div>
     </div>
