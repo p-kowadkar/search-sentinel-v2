@@ -56,8 +56,8 @@ export function ApiKeyCard({
   };
 
   const maskKey = (key: string) => {
-    if (key.length <= 8) return '••••••••';
-    return key.slice(0, 4) + '••••••••' + key.slice(-4);
+    if (key.length <= 4) return '••••••••••••';
+    return '••••••••••••' + key.slice(-4);
   };
 
   const selectedModel = provider.models.find(m => m.id === modelId);

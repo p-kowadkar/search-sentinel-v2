@@ -96,7 +96,7 @@ export function ScraperConfigCard({
               <div className="relative flex-1">
                 <Input
                   type={showKey ? 'text' : 'password'}
-                  placeholder={`Enter your ${provider.name} API key`}
+                  placeholder={currentApiKey ? `••••••••••••${currentApiKey.slice(-4)}` : `Enter your ${provider.name} API key`}
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   className="pr-10"
