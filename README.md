@@ -1,73 +1,152 @@
-# Welcome to your Lovable project
+# SEO Content Analyzer
 
-## Project info
+An AI-powered SEO analysis and content generation platform that helps businesses optimize their online presence through competitor analysis, LLM-optimized content, and multi-model comparison.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+### 🔍 SEO Analysis
+- **Website Scraping**: Extract and analyze content from any URL using Firecrawl
+- **Competitor Analysis**: Identify and analyze competitor strategies
+- **Query Generation**: AI-generated SEO queries tailored to your business
 
-There are several ways of editing your application.
+### 🤖 Multi-LLM Support (BYOK)
+- **Bring Your Own Key**: Configure your own API keys for various LLM providers
+- **Supported Providers**:
+  - OpenAI (GPT-4o, GPT-4o-mini, GPT-4 Turbo)
+  - Anthropic (Claude 4 Sonnet, Claude 4 Opus)
+  - Google (Gemini 2.0 Flash, Gemini 1.5 Pro)
+  - Perplexity (Sonar, Sonar Pro)
+- **Model Comparison**: Compare responses across different LLMs side-by-side
 
-**Use Lovable**
+### 📝 Content Generation
+- Generate SEO-optimized HTML content
+- Export content in multiple formats
+- CMS publishing integration
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 👤 User Management
+- Secure authentication system
+- Per-user API key management
+- Company profile management
 
-Changes made via Lovable will be committed automatically to this repo.
+## Technology Stack
 
-**Use your preferred IDE**
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: Tailwind CSS, shadcn/ui
+- **Backend**: Lovable Cloud (Supabase)
+- **Database**: PostgreSQL with Row Level Security
+- **Edge Functions**: Deno runtime
+- **External APIs**: Firecrawl, OpenAI, Anthropic, Google AI, Perplexity
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Getting Started
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Prerequisites
+- Node.js 18+ and npm
+- A Lovable account (for backend features)
 
-Follow these steps:
+### Local Development
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Navigate to project directory
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### Configuration
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. **Authentication**: Sign up/login through the app
+2. **API Keys**: Navigate to Settings → API Configuration to add your LLM provider keys
+3. **Scraper Config**: Configure your Firecrawl API key in Settings → Scraper Configuration
 
-**Use GitHub Codespaces**
+## Security
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Data Protection
+- **Row Level Security (RLS)**: All database tables enforce owner-only access policies
+- **JWT Verification**: All edge functions validate authentication tokens
+- **API Key Masking**: Keys display only last 4 characters in the UI (e.g., `••••••••••••abcd`)
 
-## What technologies are used for this project?
+### Best Practices
+- API keys are stored per-user and never exposed to other users
+- All sensitive operations require authenticated sessions
+- Server-side credential usage prevents client-side exposure
 
-This project is built with:
+### Security Considerations
+- API keys are stored in the database with RLS protection
+- For production deployments, consider enabling Supabase Vault for encryption at rest
+- Regular key rotation is recommended
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Project Structure
 
-## How can I deploy this project?
+```
+src/
+├── components/          # React components
+│   ├── settings/        # Settings page components
+│   └── ui/              # shadcn/ui components
+├── hooks/               # Custom React hooks
+├── integrations/        # Supabase client & types
+├── lib/                 # Utilities and API helpers
+├── pages/               # Route pages
+└── test/                # Test files
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+supabase/
+└── functions/           # Edge functions
+    ├── seo-analyze/     # SEO analysis endpoint
+    ├── seo-generate/    # Content generation
+    ├── seo-scrape/      # Website scraping
+    ├── seo-search/      # Search functionality
+    └── seo-llm-compare/ # LLM comparison
+```
 
-## Can I connect a custom domain to my Lovable project?
+## API Endpoints
 
-Yes, you can!
+| Endpoint | Description |
+|----------|-------------|
+| `/seo-analyze` | Analyze website for SEO insights |
+| `/seo-generate` | Generate optimized content |
+| `/seo-generate-query` | Generate SEO queries |
+| `/seo-scrape` | Scrape website content |
+| `/seo-search` | Search functionality |
+| `/seo-llm-compare` | Compare LLM responses |
+| `/cms-publish` | Publish content to CMS |
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Environment Variables
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The following variables are automatically configured by Lovable Cloud:
+- `VITE_SUPABASE_URL` - Backend URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Public API key
+- `VITE_SUPABASE_PROJECT_ID` - Project identifier
+
+## Deployment
+
+### Via Lovable
+1. Open your project in Lovable
+2. Click **Share → Publish**
+3. Your app will be deployed to a `.lovable.app` subdomain
+
+### Custom Domain
+1. Navigate to Project → Settings → Domains
+2. Click "Connect Domain"
+3. Follow DNS configuration instructions
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is private and proprietary.
+
+---
+
+Built with [Lovable](https://lovable.dev)
